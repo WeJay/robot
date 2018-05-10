@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- Run the irobotcreate2 node
+  <node name="irobotcreate2" pkg="irobotcreate2" type="irobotcreate2" respawn="false" output="screen">
+        <param name="serial_port"         type="string" value="/dev/ttyS1"/>
+        <param name="publishTf"          type="string" value="true"/>
+  </node> -->
+  <node name="coverage" pkg="image_transport_tutorial" type="coverage" respawn="false" output="screen">
+        <param name="p_vel"	type="double" value="1.2" />
+        <param name="i_vel"	type="double" value="0.0" />
+        <param name="d_vel"	type="double" value="0.1" />
+        <param name="odom_switch"	type="int" value="0" />
+        <param name="switch_publish"	type="int" value="0" />
+        <param name="odom_id"	type="string" value="/odom" />
+        <param name="erode_param" 	type="int" value="17" />
+        <param name="curve_param"	type="int" value="0" />
+  </node>
+ <!--Run on the Keyboard node
+    <node name="keyboard_node" pkg="irobotcreate2" type="keyboard_node" respawn="false" output="screen"></node>-->
+
+  <!-- Run the scantf publisher node 
+  <node name="laser_tftransform_publisher" pkg="laser_tftransform_publisher" type="laser_tftransform_publisher">
+        <param name="publish_frequency" value="50"/>
+        <param name="base_frame" value="base_link"/>
+  </node>-->  
+</launch>

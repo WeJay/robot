@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+
+<launch>
+  <node name="subscriber" pkg="image_transport_tutorial" type="subscriber" respawn="false" output="screen">
+        <param name="p_vel"	type="double" value="2" />
+        <param name="i_vel"	type="double" value="0" />
+        <param name="d_vel"	type="double" value="0" />
+  </node>
+ <!--Run on the Keyboard node
+    <node name="keyboard_node" pkg="irobotcreate2" type="keyboard_node" respawn="false" output="screen"></node>-->
+
+  <!-- Run the scantf publisher node 
+  <node name="laser_tftransform_publisher" pkg="laser_tftransform_publisher" type="laser_tftransform_publisher">
+        <param name="publish_frequency" value="50"/>
+        <param name="base_frame" value="base_link"/>
+  </node>-->  
+
+
+</launch>
