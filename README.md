@@ -16,3 +16,7 @@ cell to cell algorithm
     
     
 ![image](https://github.com/WeJay/robot/blob/master/png/flow2.JPG)
+	
+	
+	
+![image](https://github.com/WeJay/robot/blob/master/png/graph.JPG)
