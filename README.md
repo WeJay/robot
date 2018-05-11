@@ -1,5 +1,6 @@
 # robot
 cell to cell algorithm
+-----------------------------------------
 
 
 ![image](https://github.com/WeJay/robot/blob/master/png/flow.JPG)
@@ -20,3 +21,34 @@ cell to cell algorithm
 	
 	
 ![image](https://github.com/WeJay/robot/blob/master/png/graph.JPG)
+
+
+
+cell to cell algorithm(walk sequence non-sorting)		
+-------------------------------------------------------------------------------
+
+把所有突破口存到crosspoint[100]		
+		
+紀錄和判斷每次wall_follow第一個突破口(crosspoint[first_bump])		
+		
+紀錄每次wall_follow的起始點(stop_laser == 1 | first_bump != 0)		
+
+若沒有碰撞點則”直接從頭搜尋”最起始的突破口或者”紀錄上次搜尋到哪當作搜尋的起點”(first_bump == 0)		
+
+判斷剛跨過的突破口不紀錄!(記錄跨cell的邊界)(LastCrossBoundary)		
+
+跨出cell的行為,找牆wall_follow 或者 直直衝到邊界		
+
+處理不同突破口進到同樣的cell		
+
+
+
+1. record and decide first cross point when wall_follow once(finish)		
+
+2. If there isn't new cross point,searching cross point from start or from index searched last time in crosspoint array.(finish)		
+
+3. not record cross point at last cross boundary.(finish)		
+
+4. when cross cell,finding the nearest wall to wall_follow or go straight until it is out the boundary.(finish)		
+
+5. If differnt boundary produce different cross point, but they enter the same cell.(no solution so far)		
