@@ -43,6 +43,7 @@ int robot_mode, sweep_mode = 0, next_corner = 1, last_corner, as_wall_sweep_stat
 float offset_bound = 0;  //if go_straight to go_straight, zoom out boundary
 float minedge_x = (-(float)celllength),minedge_y = (-(float)celllength/2),maxedge_x = 0,maxedge_y = ((float)celllength/2),crosscell_x,crosscell_y,edgepoint_x,edgepoint_y,robot_body_x = 0.20,robot_body_y = 0.20;  //boundary parameters
 int first_bump = 0;
+int LastCrossConer = 0, LastCrossBoundary = 0;
 int sumCrossPoint = 0;
 struct cross_point_info{
     float x;
@@ -1310,6 +1311,8 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
 	   break;
 	}
     }
+    LastCrossBoundary = LastCrossConer;
+    LastCrossConer = 0;
     start_wall_follow = 0;
     stop_laser = 0;
     next_corner = 3;
@@ -1369,6 +1372,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
           min_index = i;
         }  
     }
+////////////////////find nearest wall to wall  follow/////////////////////////////////////
     if(smallest < 2)
     {
       /*if(min_index > 3){
@@ -1384,6 +1388,12 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
 			        }
         } 
     avoidance_status = 2;    
+    }
+///////////////////switch detect boundary status/////////////////////////////////
+    else
+    {
+    	wall_follow_secs = ros::Time::now().toSec();
+	avoidance_status = 2;	
     }
   }
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1418,9 +1428,14 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
       slow_laser = 5;
     else
       slow_laser = 0;
-    if(!stop_laser & sweep_mode == 0)
+    if(!stop_laser & first_bump == 0)
     {
         sendCmdVel(pubMessage, 0.2, 0);
+	if (ros::Time::now().toSec()-wall_follow_secs > 4.0f)
+        {
+          wall_follow_secs = ros::Time::now().toSec();
+	  next_corner = 1; 
+        }
     }
 	  if(avoidance_status == 2 & stop_laser & start_wall_follow != 0){
 		  if(frontdistr <= 0.32 & frontdistr>=0.1 & wall_stop_wf == 1){
@@ -1473,20 +1488,24 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     edgepoint_x = minedge_xx;
     edgepoint_y = maxedge_yy;
     next_corner = 2;
-    if(first_bump == 0)
-    {    
-      crosscell_x_tmp = pose.pose.position.x - robot_body_x;
-      crosscell_y_tmp = maxedge_yy + robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,maxedge_yy,maxedge_xx,maxedge_yy + celllength,0};
-      first_bump = sumCrossPoint;
-      sumCrossPoint++;
-    }
-    else
-    {    
-      crosscell_x_tmp = pose.pose.position.x - robot_body_x;
-      crosscell_y_tmp = maxedge_yy + robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,maxedge_yy,maxedge_xx,maxedge_yy + celllength,0};
-      sumCrossPoint++;
+    if(LastCrossBoundary != 4)
+    {
+    	if(first_bump == 0)
+    	{
+      		LastCrossConer = next_corner;    
+      		crosscell_x_tmp = pose.pose.position.x - robot_body_x;
+      		crosscell_y_tmp = maxedge_yy + robot_body_y;
+     		crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,maxedge_yy,maxedge_xx,maxedge_yy + celllength,0};
+      		first_bump = sumCrossPoint;
+      		sumCrossPoint++;
+    	}
+    	else
+    	{    
+      		crosscell_x_tmp = pose.pose.position.x - robot_body_x;
+      		crosscell_y_tmp = maxedge_yy + robot_body_y;
+      		crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,maxedge_yy,maxedge_xx,maxedge_yy + celllength,0};
+      		sumCrossPoint++;
+    	}
     }
       
   }
@@ -1496,20 +1515,24 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     edgepoint_x = minedge_xx;
     edgepoint_y = minedge_yy;
     next_corner = 3;
-    if(first_bump == 0)
+    if(LastCrossBoundary != 5)
     {
-      crosscell_x_tmp = minedge_xx - robot_body_x;
-      crosscell_y_tmp = pose.pose.position.y - robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx - celllength,minedge_yy,minedge_xx,maxedge_yy,0};
-      first_bump = sumCrossPoint;
-      sumCrossPoint++;
-    }
-    else
-    {
-      crosscell_x_tmp = minedge_xx - robot_body_x;
-      crosscell_y_tmp = pose.pose.position.y - robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx - celllength,minedge_yy,minedge_xx,maxedge_yy,0};
-      sumCrossPoint++;
+    	if(first_bump == 0)
+    	{
+      		LastCrossConer = next_corner; 
+      		crosscell_x_tmp = minedge_xx - robot_body_x;
+      		crosscell_y_tmp = pose.pose.position.y - robot_body_y;
+      		crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx - celllength,minedge_yy,minedge_xx,maxedge_yy,0};
+      		first_bump = sumCrossPoint;
+      		sumCrossPoint++;
+    	}
+    	else
+    	{
+      		crosscell_x_tmp = minedge_xx - robot_body_x;
+      		crosscell_y_tmp = pose.pose.position.y - robot_body_y;
+      		crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx - celllength,minedge_yy,minedge_xx,maxedge_yy,0};
+      		sumCrossPoint++;
+    	}
     }
   }
   if((odom.pose.pose.position.y < minedge_yy + offset_bound) & last_corner != 4)
@@ -1518,20 +1541,24 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     edgepoint_x = maxedge_xx;
     edgepoint_y = minedge_yy;
     next_corner = 4;
-    if(first_bump == 0)
+    if(LastCrossBoundary != 2)
     {
-      crosscell_x_tmp = pose.pose.position.x + robot_body_x;
-      crosscell_y_tmp = minedge_yy - robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,minedge_yy - celllength,maxedge_xx,minedge_yy,0};
-      first_bump = sumCrossPoint;
-      sumCrossPoint++;
-    }
-    else
-    {
-      crosscell_x_tmp = pose.pose.position.x + robot_body_x;
-      crosscell_y_tmp = minedge_yy - robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,minedge_yy - celllength,maxedge_xx,minedge_yy,0};
-      sumCrossPoint++;
+    	if(first_bump == 0)
+    	{
+      		LastCrossConer = next_corner;
+      		crosscell_x_tmp = pose.pose.position.x + robot_body_x;
+      		crosscell_y_tmp = minedge_yy - robot_body_y;
+      		crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,minedge_yy - celllength,maxedge_xx,minedge_yy,0};
+      		first_bump = sumCrossPoint;
+      		sumCrossPoint++;
+    	}
+    	else
+    	{
+      		crosscell_x_tmp = pose.pose.position.x + robot_body_x;
+      		crosscell_y_tmp = minedge_yy - robot_body_y;
+      		crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,minedge_xx,minedge_yy - celllength,maxedge_xx,minedge_yy,0};
+      		sumCrossPoint++;
+    	}
     }
   }
   if((odom.pose.pose.position.x > maxedge_xx + 0.15 - offset_bound) & last_corner != 5)
@@ -1540,21 +1567,25 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     edgepoint_x = maxedge_xx;
     edgepoint_y = maxedge_yy;
     next_corner = 5;
-    if(first_bump == 0)
+    if(LastCrossBoundary != 3)
     {
-      crosscell_x_tmp = maxedge_xx + robot_body_x;
-      crosscell_y_tmp = pose.pose.position.y + robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
-      first_bump = sumCrossPoint;
-      sumCrossPoint++;
-    }    
-    else
-    {
-      crosscell_x_tmp = maxedge_xx + robot_body_x;
-      crosscell_y_tmp = pose.pose.position.y + robot_body_y;
-      crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
-      first_bump = sumCrossPoint;
-      sumCrossPoint++;
+    	if(first_bump == 0)
+    	{
+      		LastCrossConer = next_corner;
+      		crosscell_x_tmp = maxedge_xx + robot_body_x;
+      		crosscell_y_tmp = pose.pose.position.y + robot_body_y;
+      		crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
+      		first_bump = sumCrossPoint;
+      		sumCrossPoint++;
+    	}    
+    	else
+    	{
+      		crosscell_x_tmp = maxedge_xx + robot_body_x;
+      		crosscell_y_tmp = pose.pose.position.y + robot_body_y;
+     	 	crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
+      		first_bump = sumCrossPoint;
+      		sumCrossPoint++;
+    	}
     }
   }
   last_corner = 1;
