@@ -42,7 +42,7 @@ int start_pose = 0,start_odom = 0,stop_sonar = 0,stop_bumper = 0, stop_laser = 0
 int robot_mode, sweep_mode = 0, next_corner = 1, last_corner, as_wall_sweep_status = 0; 
 float offset_bound = 0;  //if go_straight to go_straight, zoom out boundary
 float minedge_x = (-(float)celllength),minedge_y = (-(float)celllength/2),maxedge_x = 0,maxedge_y = ((float)celllength/2),crosscell_x,crosscell_y,edgepoint_x,edgepoint_y,robot_body_x = 0.20,robot_body_y = 0.20;  //boundary parameters
-int first_bump = 0;
+int first_bump = -1;
 int LastCrossConer = 0, LastCrossBoundary = 0;
 int sumCrossPoint = 0;
 struct cross_point_info{
@@ -144,12 +144,8 @@ int main(int argc, char **argv)
   ros::Rate loop_rate(50);
   while(n_slam.ok())
   {
-	for(int i = 0; i < 100; i++)
-	{
-		printf("crosspoint[%d]:x = %f, y = %f\n",i,crosspoint[i].x,crosspoint[i].y);
-	}
      //start_wall_follow = 0;
-     /*if(robot_mode == 0)
+     if(robot_mode == 0)
      {
        if(start_wall_follow != 0 & start_pose == 1 & start_laser == 1)
        {
@@ -160,20 +156,26 @@ int main(int argc, char **argv)
          start_sweep_scan = 1;
          reset_odom = 5;
          save_cellmap();
+         for(int i = 0; i < sumCrossPoint; i++)
+         {
+           printf("cross[%d] = x: %f, y: %f, minx: %f, miny: %f, Maxx: %f, Maxy: %f, discover: %d\n",i,crosspoint[i].x,crosspoint[i].y,crosspoint[i].MinBoundary_x,crosspoint[i].MinBoundary_y,crosspoint[i].MaxBoundary_x,crosspoint[i].MaxBoundary_y,crosspoint[i].discover);
+         }
        }
        if(start_sweep_scan & reset_odom!=5)
        {
   			bumper_behavior();
         			if(start_laser)
         				laser_avoidance();
-  			  if (ros::Time::now().toSec()-sweep_scan_secs > 1.0f/(float)ros_loop_rate & start_pose & cellpath.status != 2 & cell_status){
+  			  /*if (ros::Time::now().toSec()-sweep_scan_secs > 1.0f/(float)ros_loop_rate & start_pose & cellpath.status != 2 & cell_status){
     				//int sweep_status = sweep_scan(pubMessage,ros_loop_rate,2.0,0,P_vel,I_vel,D_vel);
     				//printf("sweep_scan  secs = %f\n",ros::Time::now().toSec()-sweep_scan_secs);
   			  	//test_sweepscan(pubMessage,ros_loop_rate,P_vel,I_vel,D_vel); 
     				cell_sweepscan(pubMessage, ros_loop_rate, &cellpath,P_vel,I_vel,D_vel);
 				    //increment_sweepscan(pubMessage,ros_loop_rate,P_vel,I_vel,D_vel,&cellpath);
   				  sweep_scan_secs = ros::Time::now().toSec();
-  			  }
+  			  }*/
+           cellpath.status = 2;
+           cell_status = 0;
         }
         if (ros::Time::now().toSec()-sweep_scan_secs > 1.0f){
 					//printf("cellpath.status = %d\n",cellpath.status);
@@ -183,22 +185,22 @@ int main(int argc, char **argv)
 					int crosscell_status = sweep_scan(pubMessage,ros_loop_rate,crosscell_x,crosscell_y,P_vel,I_vel,D_vel);
            if(crosscell_status == 1)
            {
-						frame_x = maxedge_x;
-						frame_y = (maxedge_y+minedge_y)/2;
+						//frame_x = maxedge_x;
+						//frame_y = (maxedge_y+minedge_y)/2;
 						start_wall_follow = 1;
 						start_sweep_scan = 0;
 						cellpath.status = 0;
-						status_set = 0;
-						cellpath.x = 0;
-						cellpath.y = 0;
-						printf("save_cellmap ...........................................................\n");
-						for (int i = 0 ; i < pathmap.rows ; i++){
+						//status_set = 0;
+						//cellpath.x = 0;
+						//cellpath.y = 0;
+						//printf("save_cellmap ...........................................................\n");
+						/*for (int i = 0 ; i < pathmap.rows ; i++){
 							for (int j = 0 ; j < pathmap.cols ; j++){
 								//printf("%d\t",pathmap.at<int16_t>(cv::Point2i(i,j)));
 								pathmap.at<int16_t>(cv::Point2i(i,j)) = 32767;
 							}
 							//printf("\n");
-						}
+						}*/
              printf("cross cell success!!\n");
            }
 				}
@@ -217,7 +219,7 @@ int main(int argc, char **argv)
             }
           }
         }
-      }*/
+      }
 	ros::spinOnce();
 	loop_rate.sleep();
   }
@@ -1271,7 +1273,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
     printf("reset odom in wall follow, diff = %f, delta_Time = %f\n",dis_p2p(pose.pose.position.x,pose.pose.position.y,odom.pose.pose.position.x,odom.pose.pose.position.y),ros::Time::now().toSec()-wf_reset_odom_sec);
     wf_reset_odom_sec = ros::Time::now().toSec();
   }
-  if(start_wall_follow == 1 & (stop_laser == 1 | first_bump != 0))
+  if(start_wall_follow == 1 & (stop_laser == 1 | first_bump >= 0))
   {
      start_x = pose.pose.position.x;
      start_y = pose.pose.position.y;
@@ -1284,7 +1286,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
   }
   if(dis_p2p(start_x,start_y,pose.pose.position.x,pose.pose.position.y) <= 0.15 && start_wall_follow == 3)
   {
-    if(first_bump != 0)
+    if(first_bump >= 0)
     {
 	crosscell_x = crosspoint[first_bump].x;
 	crosscell_y = crosspoint[first_bump].y;
@@ -1317,7 +1319,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
     stop_laser = 0;
     next_corner = 3;
     sweep_mode = 0;
-    first_bump = 0;
+    first_bump = -1;
     avoidance_status = 1;
     as_wall_sweep_status = 1;
     printf("minedge_x = %f,minedge_y = %f,maxedge_x = %f,maxedge_y = %f\n",minedge_x,minedge_y,maxedge_x,maxedge_y);
@@ -1333,6 +1335,8 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
 	for (int j = 0 ; j<=4 ; j+=1){
 		//Right side
 		frontdatar[j] = laser.ranges[j+348];
+   if(frontdatar[j]<=0.4 & frontdatar[j]>0.1)
+    printf("frontdatar[%d] = %f\n",j,frontdatar[j]);
     sidedatar1[j] = laser.ranges[j+323];
 		sidedatar2[j] = laser.ranges[j+303];
 		//Left side
@@ -1428,7 +1432,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
       slow_laser = 5;
     else
       slow_laser = 0;
-    if(!stop_laser & first_bump == 0)
+    if(!stop_laser & first_bump == -1)
     {
         sendCmdVel(pubMessage, 0.2, 0);
 	if (ros::Time::now().toSec()-wall_follow_secs > 4.0f)
@@ -1490,7 +1494,7 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     next_corner = 2;
     if(LastCrossBoundary != 4)
     {
-    	if(first_bump == 0)
+    	if(first_bump == -1)
     	{
       		LastCrossConer = next_corner;    
       		crosscell_x_tmp = pose.pose.position.x - robot_body_x;
@@ -1517,7 +1521,7 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     next_corner = 3;
     if(LastCrossBoundary != 5)
     {
-    	if(first_bump == 0)
+    	if(first_bump == -1)
     	{
       		LastCrossConer = next_corner; 
       		crosscell_x_tmp = minedge_xx - robot_body_x;
@@ -1543,7 +1547,7 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     next_corner = 4;
     if(LastCrossBoundary != 2)
     {
-    	if(first_bump == 0)
+    	if(first_bump == -1)
     	{
       		LastCrossConer = next_corner;
       		crosscell_x_tmp = pose.pose.position.x + robot_body_x;
@@ -1569,7 +1573,7 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     next_corner = 5;
     if(LastCrossBoundary != 3)
     {
-    	if(first_bump == 0)
+    	if(first_bump == -1)
     	{
       		LastCrossConer = next_corner;
       		crosscell_x_tmp = maxedge_xx + robot_body_x;
@@ -1582,8 +1586,7 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     	{
       		crosscell_x_tmp = maxedge_xx + robot_body_x;
       		crosscell_y_tmp = pose.pose.position.y + robot_body_y;
-     	 	crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
-      		first_bump = sumCrossPoint;
+     	 	  crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
       		sumCrossPoint++;
     	}
     }
