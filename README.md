@@ -1,5 +1,6 @@
 # robot
 cell to cell algorithm
+-----------------------------------------
 
 
 ![image](https://github.com/WeJay/robot/blob/master/png/flow.JPG)
@@ -23,6 +24,9 @@ cell to cell algorithm
 
 
 
+cell to cell algorithm(walk sequence non-sorting)		
+-------------------------------------------------------------------------------
+
 把所有突破口存到crosspoint[100]		
 		
 紀錄和判斷每次wall_follow第一個突破口(crosspoint[first_bump])		
@@ -37,7 +41,7 @@ cell to cell algorithm
 
 處理不同突破口進到同樣的cell		
 
-cell to cell algorithm(walk sequence non-sorting)		
+
 
 1. record and decide first cross point when wall_follow once(finish)		
 
