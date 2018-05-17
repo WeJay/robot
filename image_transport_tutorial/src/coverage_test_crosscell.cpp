@@ -55,6 +55,14 @@ struct cross_point_info{
     bool  discover;
 };
 cross_point_info crosspoint[100] = {0};
+struct NumCell{
+    float MinBoundary_x;
+    float MinBoundary_y;
+    float MaxBoundary_x;
+    float MaxBoundary_y;	
+};
+NumCell sweep_cell[10] = {0};
+int CellNumber = 1;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 bool status_set = 0;
 
@@ -142,6 +150,7 @@ int main(int argc, char **argv)
   behavior.robotmode = 0;
   mode_pub.publish(behavior);
   ros::Rate loop_rate(50);
+  sweep_cell[0] = {minedge_x,minedge_y,maxedge_x,maxedge_y};
   while(n_slam.ok())
   {
      //start_wall_follow = 0;
@@ -159,6 +168,7 @@ int main(int argc, char **argv)
          for(int i = 0; i < sumCrossPoint; i++)
          {
            printf("cross[%d] = x: %f, y: %f, minx: %f, miny: %f, Maxx: %f, Maxy: %f, discover: %d\n",i,crosspoint[i].x,crosspoint[i].y,crosspoint[i].MinBoundary_x,crosspoint[i].MinBoundary_y,crosspoint[i].MaxBoundary_x,crosspoint[i].MaxBoundary_y,crosspoint[i].discover);
+           printf("num_cell: %d\n",CellNumber);
          }
        }
        if(start_sweep_scan & reset_odom!=5)
@@ -183,7 +193,7 @@ int main(int argc, char **argv)
 			  }
 				if(cellpath.status == 2 & cell_status == 0){
 					int crosscell_status = sweep_scan(pubMessage,ros_loop_rate,crosscell_x,crosscell_y,P_vel,I_vel,D_vel);
-           if(crosscell_status == 1)
+           if(crosscell_status >= 1)
            {
 						//frame_x = maxedge_x;
 						//frame_y = (maxedge_y+minedge_y)/2;
@@ -1133,7 +1143,7 @@ int sweep_scan(ros::Publisher pub , int frequency, const float path_coordinate_x
   		        printf("stop by laser and arrival (x = %f , y = %f), (x_sp = %f, y_sp = %f).......\n",odom.pose.pose.position.x,odom.pose.pose.position.y,path_coordinate_x,path_coordinate_y);
   		    else
   		        printf("stop by laser and arrival (x = %f , y = %f), (x_sp = %f, y_sp = %f).......\n",pose.pose.position.x,pose.pose.position.y,path_coordinate_x,path_coordinate_y);
-  		    return 1 ;
+  		    return 2 ;
       	}
       }
 	    // Same as angular PID except in linear direction
@@ -1275,43 +1285,100 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
   }
   if(start_wall_follow == 1 & (stop_laser == 1 | first_bump >= 0))
   {
+
      start_x = pose.pose.position.x;
      start_y = pose.pose.position.y;
      start_wall_follow = 2;
      printf("start wallfollow\n");
   }
-  if(dis_p2p(start_x,start_y,pose.pose.position.x,pose.pose.position.y)>=0.6 && start_wall_follow == 2)
+  if(dis_p2p(start_x,start_y,pose.pose.position.x,pose.pose.position.y)>=0.4 && start_wall_follow == 2)
   {
     start_wall_follow = 3;
   }
-  if(dis_p2p(start_x,start_y,pose.pose.position.x,pose.pose.position.y) <= 0.15 && start_wall_follow == 3)
+  if(dis_p2p(start_x,start_y,pose.pose.position.x,pose.pose.position.y) <= 0.2 && start_wall_follow == 3)
   {
     if(first_bump >= 0)
     {
-	crosscell_x = crosspoint[first_bump].x;
-	crosscell_y = crosspoint[first_bump].y;
-	minedge_x = crosspoint[first_bump].MinBoundary_x;
-	minedge_y = crosspoint[first_bump].MinBoundary_y;
-	maxedge_x = crosspoint[first_bump].MaxBoundary_x;
-	maxedge_y = crosspoint[first_bump].MaxBoundary_y;
-	crosspoint[first_bump].discover = 1;
+		    for(int j = 0; j < CellNumber; j++){
+		      if((crosspoint[first_bump].MinBoundary_x == sweep_cell[j].MinBoundary_x) & (crosspoint[first_bump].MinBoundary_y == sweep_cell[j].MinBoundary_y) 
+		       & (crosspoint[first_bump].MaxBoundary_x == sweep_cell[j].MaxBoundary_x) & (crosspoint[first_bump].MaxBoundary_y == sweep_cell[j].MaxBoundary_y))
+		      {
+            printf("The cell is coveraged!!\n");
+			      crosspoint[first_bump].discover = 1;
+		      	break;
+		      } 
+        }                
+      if(crosspoint[first_bump].discover == 0){
+        crosscell_x = crosspoint[first_bump].x;
+	      crosscell_y = crosspoint[first_bump].y;
+    	  minedge_x = crosspoint[first_bump].MinBoundary_x;
+	      minedge_y = crosspoint[first_bump].MinBoundary_y;
+	      maxedge_x = crosspoint[first_bump].MaxBoundary_x;
+	      maxedge_y = crosspoint[first_bump].MaxBoundary_y;          
+	      crosspoint[first_bump].discover = 1;
+        sweep_cell[CellNumber] = {minedge_x,minedge_y,maxedge_x,maxedge_y};
+        CellNumber++;
+      }
+      else
+      {
+        for(int i = 0; i < 100; i++)
+	      {
+          if(crosspoint[i].discover == 0)
+          {
+		        for(int j = 0; j < CellNumber; j++){
+		        if((crosspoint[i].MinBoundary_x == sweep_cell[j].MinBoundary_x) & (crosspoint[i].MinBoundary_y == sweep_cell[j].MinBoundary_y) 
+		         & (crosspoint[i].MaxBoundary_x == sweep_cell[j].MaxBoundary_x) & (crosspoint[i].MaxBoundary_y == sweep_cell[j].MaxBoundary_y))
+		        {
+              printf("The cell is coveraged!!\n");
+			        crosspoint[i].discover = 1;
+		      	  break;
+		        }
+	          }
+		        if(crosspoint[i].discover == 0){
+		          crosscell_x = crosspoint[i].x;
+			        crosscell_y = crosspoint[i].y;
+			        minedge_x = crosspoint[i].MinBoundary_x;
+			        minedge_y = crosspoint[i].MinBoundary_y;
+			        maxedge_x = crosspoint[i].MaxBoundary_x;
+			        maxedge_y = crosspoint[i].MaxBoundary_y;
+			        crosspoint[i].discover = 1;
+              sweep_cell[CellNumber] = {minedge_x,minedge_y,maxedge_x,maxedge_y};
+              CellNumber++;
+			        break;
+		        }
+          }
+        }
+      }     
     }
     else
     {
-	for(int i = 0; i < 100; i++)
-	{
-	   if(crosspoint[i].discover != 0)
-	   {
-	      	crosscell_x = crosspoint[i].x;
-		crosscell_y = crosspoint[i].y;
-		minedge_x = crosspoint[i].MinBoundary_x;
-		minedge_y = crosspoint[i].MinBoundary_y;
-		maxedge_x = crosspoint[i].MaxBoundary_x;
-		maxedge_y = crosspoint[i].MaxBoundary_y;
-		crosspoint[i].discover = 1;
-	   }
-	   break;
-	}
+      for(int i = 0; i < 100; i++)
+	    {
+        if(crosspoint[i].discover == 0)
+        {
+          for(int j = 0; j < CellNumber; j++){
+		        if((crosspoint[i].MinBoundary_x == sweep_cell[j].MinBoundary_x) & (crosspoint[i].MinBoundary_y == sweep_cell[j].MinBoundary_y) 
+		         & (crosspoint[i].MaxBoundary_x == sweep_cell[j].MaxBoundary_x) & (crosspoint[i].MaxBoundary_y == sweep_cell[j].MaxBoundary_y))
+		        {
+              printf("The cell is coveraged!!\n");
+			        crosspoint[i].discover = 1;
+		      	  break;
+	          }
+          }
+		        if(crosspoint[i].discover == 0){
+		          crosscell_x = crosspoint[i].x;
+			        crosscell_y = crosspoint[i].y;
+			        minedge_x = crosspoint[i].MinBoundary_x;
+			        minedge_y = crosspoint[i].MinBoundary_y;
+			        maxedge_x = crosspoint[i].MaxBoundary_x;
+			        maxedge_y = crosspoint[i].MaxBoundary_y;
+			        crosspoint[i].discover = 1;
+              sweep_cell[CellNumber] = {minedge_x,minedge_y,maxedge_x,maxedge_y};
+              CellNumber++;
+			        break;
+		        }
+	       }
+      }
     }
     LastCrossBoundary = LastCrossConer;
     LastCrossConer = 0;
@@ -1336,7 +1403,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
 		//Right side
 		frontdatar[j] = laser.ranges[j+348];
    if(frontdatar[j]<=0.4 & frontdatar[j]>0.1)
-    printf("frontdatar[%d] = %f\n",j,frontdatar[j]);
+    //printf("frontdatar[%d] = %f\n",j,frontdatar[j]);
     sidedatar1[j] = laser.ranges[j+323];
 		sidedatar2[j] = laser.ranges[j+303];
 		//Left side
@@ -1408,7 +1475,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
   else
     offset_bound = 0;
   if(next_corner == 1){
-    findedge(minedge_x, minedge_y, maxedge_x, maxedge_y);
+    findedge(minedge_xx, minedge_yy, maxedge_xx, maxedge_yy);
   }
   if(sweep_mode == 1){
       status = sweep_scan(pub, frequency, edgepoint_x, edgepoint_y, kp_ang, ki_ang, kd_ang);
@@ -1442,7 +1509,7 @@ void wall_follow(float minedge_xx, float minedge_yy, float maxedge_xx, float max
         }
     }
 	  if(avoidance_status == 2 & stop_laser & start_wall_follow != 0){
-		  if(frontdistr <= 0.32 & frontdistr>=0.1 & wall_stop_wf == 1){
+		  if((frontdistr <= 0.32 & frontdistr>=0.1) & wall_stop_wf == 1){  //(frontdist1 <= 0.32 & frontdist1 >= 0.1) | (frontdist6 <= 0.32 & frontdist6 >= 0.1)
 			  for (int a = 0 ; a<=12 ; a+=1){
 				  usleep(150000);
 				  sendCmdVel(pubMessage, 0, 0.8);
@@ -1586,7 +1653,7 @@ void findedge(float minedge_xx, float minedge_yy, float maxedge_xx, float maxedg
     	{
       		crosscell_x_tmp = maxedge_xx + robot_body_x;
       		crosscell_y_tmp = pose.pose.position.y + robot_body_y;
-     	 	  crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
+     	 	crosspoint[sumCrossPoint]={crosscell_x_tmp,crosscell_y_tmp,maxedge_xx,minedge_yy,maxedge_xx + celllength,maxedge_yy,0};
       		sumCrossPoint++;
     	}
     }
