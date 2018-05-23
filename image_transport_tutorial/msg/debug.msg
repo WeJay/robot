@@ -1,9 +1,0 @@
-float32 x_setpoint
-float32 y_setpoint
-float32 x
-float32 y
-float32 x_speed
-float32 z_speed
-float32 angle_diff_setpoint
-float32 angle_diff
-
